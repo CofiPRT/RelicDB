@@ -3,7 +3,7 @@ package ro.cofi.relicdb;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 
-public class HelloController {
+public class RelicDBController {
     @FXML
     private Label welcomeText;
 
