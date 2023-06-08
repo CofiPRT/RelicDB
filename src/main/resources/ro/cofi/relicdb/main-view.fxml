@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.text.Font?>
-<Pane maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="308.0" prefWidth="688.0"
+<Pane fx:id="rootPane" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="308.0" prefWidth="688.0"
       xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ro.cofi.relicdb.RelicDBController">
     <AnchorPane fx:id="dbVersionPane" layoutY="-1.0" minHeight="0.0" minWidth="0.0" prefHeight="40.0" prefWidth="688.0">
@@ -19,12 +19,15 @@
             </font>
         </Label>
         <ChoiceBox fx:id="dbVersionChoice" layoutX="110.0" layoutY="6.0" prefWidth="150.0"/>
-        <Button fx:id="dbVersionUpdateButton" layoutX="270.0" layoutY="6.0" mnemonicParsing="false" text="UPDATE">
+        <Button fx:id="dbVersionUpdateButton" layoutX="270.0" layoutY="6.0" mnemonicParsing="false"
+                text="UPDATE FROM WEBSITE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Button>
-        <ProgressIndicator fx:id="dbVersionProgress" layoutX="342.0" layoutY="6.0" prefHeight="25.0" prefWidth="23.0"/>
+        <Button fx:id="dbVersionExplorerButton" layoutX="434.0" layoutY="6.0" mnemonicParsing="false"
+                text="OPEN IN EXPLORER"/>
+        <ProgressIndicator fx:id="dbVersionProgress" layoutX="563.0" layoutY="6.0" prefHeight="25.0" prefWidth="23.0"/>
     </AnchorPane>
     <AnchorPane fx:id="analysisPane" layoutY="70.0" prefHeight="239.0" prefWidth="688.0">
         <Label layoutX="5.0" layoutY="4.0" text="Relic">

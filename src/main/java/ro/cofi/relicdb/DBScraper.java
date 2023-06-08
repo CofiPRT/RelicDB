@@ -36,7 +36,7 @@ public class DBScraper {
         Document doc = Jsoup.connect(URL_STAR_RAIL).get();
 
         Elements characters = selectNonEmptyElements(
-            doc, ".character-portrait", "Could not find the characterList"
+            doc, ".character-portrait", "Could not find the character list"
         );
 
         for (Element character : characters)

@@ -7,6 +7,7 @@ module ro.cofi.relicdb {
     requires org.apache.logging.log4j;
     requires org.jsoup;
     requires com.google.gson;
+    requires org.apache.commons.io;
 
     opens ro.cofi.relicdb to javafx.fxml;
     exports ro.cofi.relicdb;

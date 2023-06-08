@@ -31,7 +31,7 @@ public class DBChoice implements Comparable<DBChoice> {
     @Override
     public int compareTo(DBChoice o) {
         // descending
-        return Long.compare(lastModifiedTimestamp, o.lastModifiedTimestamp);
+        return Long.compare(o.lastModifiedTimestamp, lastModifiedTimestamp);
     }
 
     @Override
