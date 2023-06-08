@@ -1,4 +1,4 @@
-package ro.cofi.relicdb;
+package ro.cofi.relicdb.io;
 
 import java.io.File;
 import java.text.SimpleDateFormat;

@@ -1,4 +1,4 @@
-package ro.cofi.relicdb;
+package ro.cofi.relicdb.io;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -9,6 +9,7 @@ import org.apache.commons.io.monitor.FileAlterationMonitor;
 import org.apache.commons.io.monitor.FileAlterationObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ro.cofi.relicdb.LoadedDB;
 
 import java.io.File;
 import java.io.IOException;

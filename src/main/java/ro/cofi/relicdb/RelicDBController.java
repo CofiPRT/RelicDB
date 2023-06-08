@@ -11,9 +11,13 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ro.cofi.relicdb.io.DBChoice;
+import ro.cofi.relicdb.io.DBFileManager;
+import ro.cofi.relicdb.io.DBScraper;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -65,7 +69,7 @@ public class RelicDBController {
     @FXML
     private ProgressIndicator analysisProgress;
     @FXML
-    private TextArea analysisResult;
+    private WebView analysisResult;
 
     private final ChangeListener<DBChoice> choiceChangeListener = (observable, oldValue, newValue) -> {
         unloadChoice();

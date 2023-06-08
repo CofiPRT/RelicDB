@@ -1,6 +1,7 @@
 module ro.cofi.relicdb {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.web;
 
     requires org.controlsfx.controls;
     requires org.kordamp.ikonli.javafx;
@@ -11,4 +12,10 @@ module ro.cofi.relicdb {
 
     opens ro.cofi.relicdb to javafx.fxml;
     exports ro.cofi.relicdb;
+    exports ro.cofi.relicdb.io;
+    opens ro.cofi.relicdb.io to javafx.fxml;
+    exports ro.cofi.relicdb.logic;
+    opens ro.cofi.relicdb.logic to javafx.fxml;
+    exports ro.cofi.relicdb.scoring;
+    opens ro.cofi.relicdb.scoring to javafx.fxml;
 }

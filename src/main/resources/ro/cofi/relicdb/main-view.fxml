@@ -5,11 +5,11 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.text.Font?>
-<Pane fx:id="rootPane" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="308.0" prefWidth="688.0"
+<?import javafx.scene.web.WebView?>
+<Pane fx:id="rootPane" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="354.0" prefWidth="688.0"
       xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ro.cofi.relicdb.RelicDBController">
     <AnchorPane fx:id="dbVersionPane" layoutY="-1.0" minHeight="0.0" minWidth="0.0" prefHeight="40.0" prefWidth="688.0">
@@ -27,53 +27,64 @@
         </Button>
         <Button fx:id="dbVersionExplorerButton" layoutX="434.0" layoutY="6.0" mnemonicParsing="false"
                 text="OPEN IN EXPLORER"/>
-        <ProgressIndicator fx:id="dbVersionProgress" layoutX="563.0" layoutY="6.0" prefHeight="25.0" prefWidth="23.0"/>
     </AnchorPane>
-    <AnchorPane fx:id="analysisPane" layoutY="70.0" prefHeight="239.0" prefWidth="688.0">
-        <Label layoutX="5.0" layoutY="4.0" text="Relic">
+    <AnchorPane fx:id="analysisPane" layoutY="70.0" prefHeight="284.0" prefWidth="688.0">
+        <Label layoutX="5.0" layoutY="4.0" text="Relic Type">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputRelicName" layoutX="103.0" layoutY="5.0" prefWidth="150.0"/>
-        <Label layoutX="5.0" layoutY="31.0" text="Main Stat">
+        <ChoiceBox fx:id="inputRelicType" layoutX="103.0" layoutY="5.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="31.0" text="Relic Part">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputMainStat" layoutX="103.0" layoutY="32.0" prefWidth="150.0"/>
-        <Label layoutX="5.0" layoutY="57.0" text="Substat 1">
+        <ChoiceBox fx:id="inputRelicPart" layoutX="103.0" layoutY="32.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="58.0" text="Relic Name">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputSubstat1" layoutX="103.0" layoutY="58.0" prefWidth="150.0"/>
-        <Label layoutX="5.0" layoutY="84.0" text="Substat 2">
+        <ChoiceBox fx:id="inputrelicName" layoutX="103.0" layoutY="59.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="85.0" text="Main Stat">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputSubstat2" layoutX="103.0" layoutY="85.0" prefWidth="150.0"/>
-        <Label layoutX="5.0" layoutY="111.0" text="Substat 3">
+        <ChoiceBox fx:id="inputMainStat" layoutX="103.0" layoutY="86.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="112.0" text="Substat 1">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputSubstat3" layoutX="103.0" layoutY="112.0" prefWidth="150.0"/>
-        <Label layoutX="5.0" layoutY="138.0" text="Substat 4">
+        <ChoiceBox fx:id="inputSubstat1" layoutX="103.0" layoutY="113.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="139.0" text="Substat 2">
             <font>
                 <Font name="System Bold" size="18.0"/>
             </font>
         </Label>
-        <ChoiceBox fx:id="inputSubstat4" layoutX="103.0" layoutY="139.0" prefWidth="150.0"/>
-        <Button fx:id="analysisButton" layoutX="92.0" layoutY="179.0" mnemonicParsing="false" text="ANALYZE">
+        <ChoiceBox fx:id="inputSubstat2" layoutX="103.0" layoutY="140.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="166.0" text="Substat 3">
+            <font>
+                <Font name="System Bold" size="18.0"/>
+            </font>
+        </Label>
+        <ChoiceBox fx:id="inputSubstat3" layoutX="103.0" layoutY="167.0" prefWidth="150.0"/>
+        <Label layoutX="5.0" layoutY="193.0" text="Substat 4">
+            <font>
+                <Font name="System Bold" size="18.0"/>
+            </font>
+        </Label>
+        <ChoiceBox fx:id="inputSubstat4" layoutX="103.0" layoutY="194.0" prefWidth="150.0"/>
+        <Button fx:id="analysisButton" layoutX="92.0" layoutY="239.0" mnemonicParsing="false" text="ANALYZE">
             <font>
                 <Font name="System Bold" size="12.0"/>
             </font>
         </Button>
-        <ProgressIndicator fx:id="analysisProgress" layoutX="167.0" layoutY="179.0" prefHeight="25.0" prefWidth="23.0"/>
-        <TextArea fx:id="analysisResult" editable="false" layoutX="266.0" layoutY="4.0" prefHeight="222.0"
-                  prefWidth="412.0" scrollLeft="1.0" wrapText="true"/>
+        <WebView layoutX="264.0" layoutY="5.0" prefHeight="266.0" prefWidth="413.0"/>
     </AnchorPane>
     <Separator layoutY="37.0" prefHeight="4.0" prefWidth="688.0"/>
+    <ProgressIndicator fx:id="dbVersionProgress" layoutX="565.0" layoutY="5.0" prefHeight="25.0" prefWidth="23.0"/>
+    <ProgressIndicator fx:id="analysisProgress" layoutX="172.0" layoutY="309.0" prefHeight="25.0" prefWidth="23.0"/>
 </Pane>

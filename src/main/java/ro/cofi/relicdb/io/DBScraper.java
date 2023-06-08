@@ -1,4 +1,4 @@
-package ro.cofi.relicdb;
+package ro.cofi.relicdb.io;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -15,6 +15,8 @@ public class DBScraper {
 
     private static final String URL_ROOT = "https://genshin.gg";
     private static final String URL_STAR_RAIL = URL_ROOT + "/star-rail";
+    private static final String URL_RELICS = URL_STAR_RAIL + "/relics";
+    private static final String URL_ORNAMENTS = URL_STAR_RAIL + "/planar-ornaments";
 
     private static final String MAIN_STAT_BODY = "Body";
     private static final String MAIN_STAT_FEET = "Feet";
@@ -25,6 +27,8 @@ public class DBScraper {
     public JsonObject scrape() throws IOException {
         JsonObject rootObject = new JsonObject();
 
+        rootObject.add("relics", scrapeRelics());
+        rootObject.add("ornaments", scrapeOrnaments());
         rootObject.add("characters", scrapeCharacters());
 
         return rootObject;
@@ -62,23 +66,23 @@ public class DBScraper {
 
         Elements buildSections = doc.select(".character-info-build-section");
 
-        characterObject.add("relics", scrapeRelics(buildSections));
-        characterObject.add("ornaments", scrapeOrnaments(buildSections));
+        characterObject.add("relics", scrapeCharacterRelics(buildSections));
+        characterObject.add("ornaments", scrapeCharacterOrnaments(buildSections));
         characterObject.add("mainStats", scrapeMainStats(buildSections));
         characterObject.add("subStats", scrapeSubStats(buildSections));
 
         return characterObject;
     }
 
-    private JsonArray scrapeRelics(Elements buildSections) throws IOException {
-        return scrapeWeapons(buildSections, "Best Relics", "relic", true);
+    private JsonArray scrapeCharacterRelics(Elements buildSections) throws IOException {
+        return scrapeCharacterWeapons(buildSections, "Best Relics", "relic", true);
     }
 
-    private JsonArray scrapeOrnaments(Elements buildSections) throws IOException {
-        return scrapeWeapons(buildSections, "Best Ornaments", "ornament", false);
+    private JsonArray scrapeCharacterOrnaments(Elements buildSections) throws IOException {
+        return scrapeCharacterWeapons(buildSections, "Best Ornaments", "ornament", false);
     }
 
-    private JsonArray scrapeWeapons(
+    private JsonArray scrapeCharacterWeapons(
         Elements buildSections, String title, String type, boolean allowMultipleSets
     ) throws IOException {
         JsonArray weaponOptionsResult = new JsonArray();
@@ -118,7 +122,7 @@ public class DBScraper {
         for (Element weaponSet : relicSets)
             weaponSetsArray.add(scrapeWeaponSet(weaponSet, type));
 
-        weaponOptionObject.add("options", weaponSetsArray);
+        weaponOptionObject.add("sets", weaponSetsArray);
 
         return weaponOptionObject;
     }
@@ -190,6 +194,37 @@ public class DBScraper {
             subStatsArray.add(subStat.text());
 
         return subStatsArray;
+    }
+
+    private JsonArray scrapeRelics() throws IOException {
+        return scrapeWeapons(URL_RELICS, "relic");
+    }
+
+    private JsonArray scrapeOrnaments() throws IOException {
+        return scrapeWeapons(URL_ORNAMENTS, "ornament");
+    }
+
+    private JsonArray scrapeWeapons(String url, String type) throws IOException {
+        JsonArray relicsArray = new JsonArray();
+
+        Document doc = Jsoup.connect(url).get();
+
+        Elements relicItems = selectNonEmptyElements(
+            doc, ".light-cones-item", String.format("Could not find %s items", type)
+        );
+
+        for (Element relicItem : relicItems)
+            relicsArray.add(scrapeWeapon(relicItem, type));
+
+        return relicsArray;
+    }
+
+    private String scrapeWeapon(Element relicItem, String type) throws IOException {
+        Element relicNameElement = selectNonNullElement(
+            relicItem, ".light-cones-name", String.format("Could not find %s name", type)
+        );
+
+        return relicNameElement.text();
     }
 
     private Element selectSection(Elements buildSections, String title) throws IOException {
