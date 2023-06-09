@@ -19,6 +19,10 @@ public class RelicDBApplication extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(RelicDBApplication.class.getResource("main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
+
+        RelicDBController controller = fxmlLoader.getController();
+        stage.setOnHiding(event -> controller.shutdown());
+
         stage.getIcons().add(ICON);
         stage.setTitle("RelicDB");
         stage.setScene(scene);

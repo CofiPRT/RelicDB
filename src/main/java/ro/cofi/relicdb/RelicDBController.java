@@ -129,7 +129,12 @@ public class RelicDBController {
         updateNode(dbVersionPane, true, false);
         executeWithProgress(dbVersionProgress, () -> {
             try {
+                LOGGER.info(
+                    "Loading DB file \"{}\", at path {}",
+                    newValue, newValue.getFile().getAbsolutePath()
+                );
                 loadedDB = dbFileManager.loadDBFile(newValue);
+
                 executeUI(() -> {
                     if (loadedDB != null)
                         showAnalysis();
@@ -151,7 +156,10 @@ public class RelicDBController {
         updateNode(analysisPane, false, false);
         executeWithProgress(dbVersionProgress, () -> {
             try {
-                dbFileManager.storeDBFile(dbScraper.scrape());
+                LOGGER.info("Pulling info from the web...");
+                String newFilePath = dbFileManager.storeDBFile(dbScraper.scrape());
+                LOGGER.info("Update complete. Written to file: {}", newFilePath);
+
                 executeUI(() -> {
                     removeChoiceListener();
                     clearChoiceSelection();
@@ -266,6 +274,8 @@ public class RelicDBController {
 
                 String analysisResultHTML = loadedDB.analyzeItem(recipe, filters);
 
+                LOGGER.info("Analysis complete");
+
                 executeUI(() -> analysisResult.getEngine().loadContent(analysisResultHTML));
             } catch (Exception e) {
                 errorAlert("Could not perform analysis", e);
@@ -311,6 +321,8 @@ public class RelicDBController {
 
     @FXML
     private void initialize() {
+        LOGGER.info("Initializing controller");
+
         inputSubstatListenerMap.put(inputSubstat1, null);
         inputSubstatListenerMap.put(inputSubstat2, null);
         inputSubstatListenerMap.put(inputSubstat3, null);
@@ -332,6 +344,7 @@ public class RelicDBController {
         dbFileManager.addDirectoryListener(directoryListener);
 
         try {
+            LOGGER.info("Initializing directory monitor");
             dbFileManager.initDirectoryMonitor();
         } catch (Exception e) {
             errorAlert("Could not initialize directory monitor", e);
@@ -522,6 +535,12 @@ public class RelicDBController {
 
     private void executeUI(Runnable runnable) {
         Platform.runLater(runnable);
+    }
+
+    public void shutdown() {
+        LOGGER.info("Shutting down...");
+        executorService.shutdown();
+        dbFileManager.shutdown();
     }
 
 }

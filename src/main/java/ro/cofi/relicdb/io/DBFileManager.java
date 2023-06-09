@@ -76,7 +76,7 @@ public class DBFileManager {
             .toList();
     }
 
-    public void storeDBFile(JsonObject data) throws IOException {
+    public String storeDBFile(JsonObject data) throws IOException {
         // write the file to the storage directory - its name will be the current timestamp
         File storageDir = new File(STORAGE_DIR);
         if (!storageDir.exists() && !storageDir.mkdir())
@@ -94,6 +94,8 @@ public class DBFileManager {
         }
 
         lastDirectoryChangeTimestamp = System.currentTimeMillis();
+
+        return dbFile.getAbsolutePath();
     }
 
     public LoadedDB loadDBFile(DBChoice choice) throws IOException {
@@ -147,5 +149,13 @@ public class DBFileManager {
 
         lastDirectoryChangeTimestamp = currentTime;
         directoryListeners.forEach(Runnable::run);
+    }
+
+    public void shutdown() {
+        try {
+            monitor.stop();
+        } catch (Exception e) {
+            LOGGER.error("Could not stop directory monitor", e);
+        }
     }
 }

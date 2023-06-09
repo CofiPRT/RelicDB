@@ -1,0 +1,10 @@
+2023-06-09 22:01:53,518 [JavaFX Application Thread] INFO  RelicDBController:324 - Initializing controller
+2023-06-09 22:01:53,522 [JavaFX Application Thread] INFO  RelicDBController:347 - Initializing directory monitor
+2023-06-09 22:01:53,545 [pool-3-thread-1] INFO  RelicDBController:132 - Loading DB file "2023/06/09 21:42:47", at path E:\Workspace\PROJECTS\RelicDB\RelicDBVersions\1686336167417.json
+2023-06-09 22:01:58,835 [pool-3-thread-1] INFO  RelicDBController:159 - Pulling info from the web...
+2023-06-09 22:02:01,051 [pool-3-thread-1] INFO  RelicDBController:161 - Update complete. Written to file: E:\Workspace\PROJECTS\RelicDB\RelicDBVersions\1686337321042.json
+2023-06-09 22:02:01,068 [pool-3-thread-1] INFO  RelicDBController:132 - Loading DB file "2023/06/09 22:02:01", at path E:\Workspace\PROJECTS\RelicDB\RelicDBVersions\1686337321042.json
+2023-06-09 22:02:09,183 [pool-3-thread-1] INFO  RelicDBController:277 - Analysis complete
+2023-06-09 22:02:10,797 [pool-3-thread-1] INFO  RelicDBController:277 - Analysis complete
+2023-06-09 22:02:13,868 [pool-3-thread-1] INFO  RelicDBController:277 - Analysis complete
+2023-06-09 22:05:52,218 [JavaFX Application Thread] INFO  RelicDBController:541 - Shutting down...
