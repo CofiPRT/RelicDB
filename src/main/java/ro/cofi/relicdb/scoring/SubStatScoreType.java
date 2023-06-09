@@ -21,4 +21,5 @@ public enum SubStatScoreType {
     public String getIcon() {
         return icon;
     }
+
 }

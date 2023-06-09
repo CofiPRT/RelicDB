@@ -7,13 +7,16 @@ import java.util.List;
 public record RankScore(RankScoreType type, String otherSet) {
 
     public String getHTML() {
-        String header = HTMLUtil.prependIcon(type.getIcon(), "Set -", type.getDescription());
+        String header = String.format(
+            "%s Set - <b>%s</b>: %s",
+            type.getIcon(),
+            type.getRankTitle(),
+            otherSet == null
+                ? type.getFullSetDescription()
+                : String.format(type.getDuoSetDescription(), otherSet)
+        );
 
-        String additionalInfo = otherSet == null
-            ? "To be used in a full set."
-            : String.format("To be used with <i>%s</i>.", otherSet);
-
-        return HTMLUtil.wrapInLineBreaks(List.of(header, HTMLUtil.wrapInList(List.of(additionalInfo))));
+        return HTMLUtil.wrapInLineBreaks(List.of(header));
     }
 
 }

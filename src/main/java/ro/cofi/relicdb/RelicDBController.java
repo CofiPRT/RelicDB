@@ -2,7 +2,9 @@ package ro.cofi.relicdb;
 
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
-import javafx.collections.FXCollections;
+import javafx.concurrent.Worker;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -15,17 +17,37 @@ import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.events.EventTarget;
+import org.w3c.dom.html.HTMLAnchorElement;
 import ro.cofi.relicdb.io.DBChoice;
 import ro.cofi.relicdb.io.DBFileManager;
 import ro.cofi.relicdb.io.DBScraper;
+import ro.cofi.relicdb.logic.RelicPart;
+import ro.cofi.relicdb.logic.RelicType;
+import ro.cofi.relicdb.logic.Stat;
+import ro.cofi.relicdb.scoring.AnalysisFilters;
+import ro.cofi.relicdb.scoring.AnalysisRecipe;
+import ro.cofi.relicdb.scoring.MainStatScoreType;
+import ro.cofi.relicdb.scoring.RankScoreType;
 
+import java.awt.Desktop;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class RelicDBController {
 
@@ -53,23 +75,53 @@ public class RelicDBController {
     @FXML
     private AnchorPane analysisPane;
     @FXML
-    private ChoiceBox<Object> inputRelicName;
+    private ChoiceBox<RelicType> inputRelicType;
     @FXML
-    private ChoiceBox<Object> inputMainStat;
+    private ChoiceBox<RelicPart> inputRelicPart;
     @FXML
-    private ChoiceBox<Object> inputSubstat1;
+    private ChoiceBox<String> inputSetName;
     @FXML
-    private ChoiceBox<Object> inputSubstat2;
+    private ChoiceBox<Stat> inputMainStat;
     @FXML
-    private ChoiceBox<Object> inputSubstat3;
+    private ChoiceBox<Stat> inputSubstat1;
     @FXML
-    private ChoiceBox<Object> inputSubstat4;
+    private ChoiceBox<Stat> inputSubstat2;
+    @FXML
+    private ChoiceBox<Stat> inputSubstat3;
+    @FXML
+    private ChoiceBox<Stat> inputSubstat4;
+    @FXML
+    private ChoiceBox<RankScoreType> filterSetScore;
+    @FXML
+    private ChoiceBox<MainStatScoreType> filterMainStatScore;
+    @FXML
+    private ChoiceBox<Integer> filterSubStatCount;
     @FXML
     private Button analysisButton;
     @FXML
     private ProgressIndicator analysisProgress;
     @FXML
     private WebView analysisResult;
+
+    private final Map<ChoiceBox<Stat>, ChangeListener<Stat>> inputSubstatListenerMap = new LinkedHashMap<>();
+
+    private final Runnable directoryListener = () -> executeUI(() -> {
+        // save current selection
+        DBChoice selectedChoice = dbVersionChoice.getSelectionModel().getSelectedItem();
+
+        removeChoiceListener();
+        clearChoiceSelection();
+        setChoices(discoverChoices());
+
+        // if the previously selected choice is still available, select it
+        if (selectedChoice != null && dbVersionChoice.getItems().contains(selectedChoice))
+            dbVersionChoice.getSelectionModel().select(selectedChoice);
+        else
+            unloadChoice();
+
+        // add the listener after selecting - this way, no DB reload is triggered
+        addChoiceListener();
+    });
 
     private final ChangeListener<DBChoice> choiceChangeListener = (observable, oldValue, newValue) -> {
         unloadChoice();
@@ -80,7 +132,7 @@ public class RelicDBController {
                 loadedDB = dbFileManager.loadDBFile(newValue);
                 executeUI(() -> {
                     if (loadedDB != null)
-                        updateNode(analysisPane, true, true);
+                        showAnalysis();
 
                     updateNode(dbVersionExplorerButton, true, loadedDB != null);
                 });
@@ -94,8 +146,176 @@ public class RelicDBController {
         });
     };
 
+    private final EventHandler<ActionEvent> dbVersionUpdateButtonListener = event -> {
+        updateNode(dbVersionPane, true, false);
+        updateNode(analysisPane, false, false);
+        executeWithProgress(dbVersionProgress, () -> {
+            try {
+                dbFileManager.storeDBFile(dbScraper.scrape());
+                executeUI(() -> {
+                    removeChoiceListener();
+                    clearChoiceSelection();
+                    setChoices(discoverChoices());
+                    addChoiceListener();
+                    selectFirstChoice();
+                });
+            } catch (Exception e) {
+                errorAlert("Could not perform DB update", e);
+                executeUI(this::clearChoiceSelection);
+            } finally {
+                executeUI(() -> updateNode(dbVersionPane, true, true));
+            }
+        });
+    };
+
+    private final EventHandler<ActionEvent> dbVersionExplorerButtonListener = event -> {
+        try {
+            dbFileManager.openExplorer(loadedDB.getDBChoice());
+        } catch (Exception e) {
+            errorAlert("Could not open explorer", e);
+        }
+    };
+
+    private final ChangeListener<RelicType> inputRelicTypeListener = (observable, oldValue, newValue) -> {
+        inputRelicPart.getSelectionModel().clearSelection();
+        inputSetName.getSelectionModel().clearSelection();
+
+        if (newValue == null) {
+            updateNode(inputRelicPart, true, false);
+            updateNode(inputSetName, true, false);
+            return;
+        }
+
+        inputRelicPart.getItems().setAll(newValue.getParts());
+        updateNode(inputRelicPart, true, true);
+
+        inputSetName.getItems().setAll(loadedDB.getWeaponNames(newValue.getJsonKey()));
+        updateNode(inputSetName, true, true);
+    };
+
+    private final ChangeListener<RelicPart> inputRelicPartListener = (observable, oldValue, newValue) -> {
+        inputMainStat.getSelectionModel().clearSelection();
+
+        if (newValue == null) {
+            updateNode(inputMainStat, true, false);
+            return;
+        }
+
+        List<Stat> mainStats = newValue.getAvailableStats();
+        inputMainStat.getItems().setAll(newValue.getAvailableStats());
+
+        if (mainStats.size() == 1)
+            inputMainStat.getSelectionModel().selectFirst();
+        else
+            inputMainStat.getSelectionModel().clearSelection();
+
+        updateNode(inputMainStat, true, inputMainStat.getItems().size() > 1);
+    };
+
+    private final ChangeListener<String> inputRelicNameListener = (observable, oldValue, newValue) ->
+        testReadyForAnalysis();
+
+    private final ChangeListener<Stat> inputMainStatListener = (observable, oldValue, newValue) -> {
+        testReadyForAnalysis();
+
+        List<Stat> subStatChoices = new ArrayList<>(Arrays.asList(Stat.valuesWithNull()));
+
+        if (newValue != null)
+            subStatChoices.remove(newValue);
+
+        inputSubstatListenerMap.keySet().forEach(inputSubStat -> {
+            Stat previousSelection = inputSubStat.getSelectionModel().getSelectedItem();
+
+            clearSelectionFromSubstat(inputSubStat, newValue);
+
+            // remove listener before replacing
+            removeSubstatListener(inputSubStat);
+            inputSubStat.getItems().setAll(subStatChoices);
+            readdSubstatListener(inputSubStat);
+
+            if (previousSelection != newValue)
+                inputSubStat.getSelectionModel().select(previousSelection);
+        });
+    };
+
+    private final EventHandler<ActionEvent> analysisButtonListener = event -> {
+        updateNode(dbVersionPane, true, false);
+        updateNode(analysisPane, true, false);
+        analysisResult.getEngine().loadContent("");
+        executeWithProgress(analysisProgress, () -> {
+            try {
+                RelicType relicType = inputRelicType.getSelectionModel().getSelectedItem();
+                RelicPart relicPart = inputRelicPart.getSelectionModel().getSelectedItem();
+                String relicName = inputSetName.getSelectionModel().getSelectedItem();
+                Stat mainStat = inputMainStat.getSelectionModel().getSelectedItem();
+                Stat substat1 = inputSubstat1.getSelectionModel().getSelectedItem();
+                Stat substat2 = inputSubstat2.getSelectionModel().getSelectedItem();
+                Stat substat3 = inputSubstat3.getSelectionModel().getSelectedItem();
+                Stat substat4 = inputSubstat4.getSelectionModel().getSelectedItem();
+
+                AnalysisRecipe recipe = new AnalysisRecipe(
+                    relicType, relicPart, relicName,
+                    mainStat, substat1, substat2, substat3, substat4
+                );
+
+                AnalysisFilters filters = new AnalysisFilters(
+                    filterSetScore.getSelectionModel().getSelectedItem().getHigherScores(),
+                    filterMainStatScore.getSelectionModel().getSelectedItem().getHigherScores(),
+                    filterSubStatCount.getSelectionModel().getSelectedItem()
+                );
+
+                String analysisResultHTML = loadedDB.analyzeItem(recipe, filters);
+
+                executeUI(() -> analysisResult.getEngine().loadContent(analysisResultHTML));
+            } catch (Exception e) {
+                errorAlert("Could not perform analysis", e);
+            } finally {
+                executeUI(() -> {
+                    updateNode(dbVersionPane, true, true);
+                    updateNode(analysisPane, true, true);
+                });
+            }
+        });
+    };
+
+    private final ChangeListener<Worker.State> analysisResultListener = (observable, oldState, newState) -> {
+        if (newState != Worker.State.SUCCEEDED)
+            return;
+
+        // add listener to override the default hyperlink handling
+        Document document = analysisResult.getEngine().getDocument();
+        NodeList nodeList = document.getElementsByTagName("a");
+
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            org.w3c.dom.Node node = nodeList.item(i);
+            EventTarget eventTarget = (EventTarget) node;
+            eventTarget.addEventListener("click", evt -> {
+                evt.preventDefault();
+
+                EventTarget target = evt.getCurrentTarget();
+                HTMLAnchorElement anchorElement = (HTMLAnchorElement) target;
+                String href = anchorElement.getHref();
+
+                if (Desktop.isDesktopSupported() &&
+                    Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    try {
+                        Desktop.getDesktop().browse(new URI(href));
+                    } catch (IOException | URISyntaxException e) {
+                        errorAlert("Could not open link", e);
+                    }
+                }
+
+            }, false);
+        }
+    };
+
     @FXML
     private void initialize() {
+        inputSubstatListenerMap.put(inputSubstat1, null);
+        inputSubstatListenerMap.put(inputSubstat2, null);
+        inputSubstatListenerMap.put(inputSubstat3, null);
+        inputSubstatListenerMap.put(inputSubstat4, null);
+
         // assure visibility
         updateNode(dbVersionPane, true, true);
         updateNode(dbVersionChoice, true, true);
@@ -104,15 +324,18 @@ public class RelicDBController {
         updateNode(dbVersionProgress, false, true);
 
         updateNode(analysisPane, false, false);
-        updateNode(inputRelicName, true, true);
-        updateNode(inputMainStat, true, true);
-        updateNode(inputSubstat1, true, true);
-        updateNode(inputSubstat2, true, true);
-        updateNode(inputSubstat3, true, true);
-        updateNode(inputSubstat4, true, true);
-        updateNode(analysisButton, true, true);
         updateNode(analysisProgress, false, true);
         updateNode(analysisResult, true, true);
+        disableAnalysisChoices(false, false);
+
+        // add listener for file changes
+        dbFileManager.addDirectoryListener(directoryListener);
+
+        try {
+            dbFileManager.initDirectoryMonitor();
+        } catch (Exception e) {
+            errorAlert("Could not initialize directory monitor", e);
+        }
 
         // set up DB version choices
         removeChoiceListener();
@@ -120,63 +343,31 @@ public class RelicDBController {
         setChoices(discoverChoices());
         addChoiceListener();
         selectFirstChoice();
+        dbVersionUpdateButton.setOnAction(dbVersionUpdateButtonListener);
+        dbVersionExplorerButton.setOnAction(dbVersionExplorerButtonListener);
 
-        // set the update button
-        dbVersionUpdateButton.setOnAction(event -> {
-            updateNode(dbVersionPane, true, false);
-            updateNode(analysisPane, false, false);
-            executeWithProgress(dbVersionProgress, () -> {
-                try {
-                    dbFileManager.storeDBFile(dbScraper.scrape());
-                    executeUI(() -> {
-                        removeChoiceListener();
-                        clearChoiceSelection();
-                        setChoices(discoverChoices());
-                        addChoiceListener();
-                        selectFirstChoice();
-                    });
-                } catch (Exception e) {
-                    errorAlert("Could not perform DB update", e);
-                    executeUI(this::clearChoiceSelection);
-                } finally {
-                    executeUI(() -> updateNode(dbVersionPane, true, true));
-                }
-            });
+        // set up analysis choices
+        inputRelicType.getItems().setAll(RelicType.values());
+        inputRelicType.getSelectionModel().selectedItemProperty().addListener(inputRelicTypeListener);
+        inputRelicPart.getSelectionModel().selectedItemProperty().addListener(inputRelicPartListener);
+        inputSetName.getSelectionModel().selectedItemProperty().addListener(inputRelicNameListener);
+        inputMainStat.getSelectionModel().selectedItemProperty().addListener(inputMainStatListener);
+        inputSubstatListenerMap.keySet().forEach(inputSubstat ->
+            inputSubstat.getItems().setAll(Stat.valuesWithNull())
+        );
+        inputSubstatListenerMap.keySet().forEach(inputSubstat -> {
+            ChangeListener<Stat> listener = getSubstatChangeListener(inputSubstat);
+            inputSubstat.getSelectionModel().selectedItemProperty().addListener(listener);
+            inputSubstatListenerMap.put(inputSubstat, listener);
         });
-
-        // set the explorer button
-        dbVersionExplorerButton.setOnAction(event -> {
-            try {
-                dbFileManager.openExplorer(loadedDB.getDBChoice());
-            } catch (Exception e) {
-                errorAlert("Could not open explorer", e);
-            }
-        });
-
-        // add listener for file changes
-        dbFileManager.addDirectoryListener(() -> executeUI(() -> {
-            // save current selection
-            DBChoice selectedChoice = dbVersionChoice.getSelectionModel().getSelectedItem();
-
-            removeChoiceListener();
-            clearChoiceSelection();
-            setChoices(discoverChoices());
-
-            // if the previously selected choice is still available, select it
-            if (selectedChoice != null && dbVersionChoice.getItems().contains(selectedChoice))
-                dbVersionChoice.getSelectionModel().select(selectedChoice);
-            else
-                unloadChoice();
-
-            // add the listener after selecting - this way, no DB reload is triggered
-            addChoiceListener();
-        }));
-
-        try {
-            dbFileManager.initDirectoryMonitor();
-        } catch (Exception e) {
-            errorAlert("Could not initialize directory monitor", e);
-        }
+        filterSetScore.getItems().setAll(RankScoreType.values());
+        filterSetScore.getSelectionModel().select(RankScoreType.ACCEPTABLE);
+        filterMainStatScore.getItems().setAll(MainStatScoreType.values());
+        filterMainStatScore.getSelectionModel().select(MainStatScoreType.IDEAL);
+        setFilterSubStatMaxCount(0);
+        filterSubStatCount.getSelectionModel().select(0);
+        analysisButton.setOnAction(analysisButtonListener);
+        analysisResult.getEngine().getLoadWorker().stateProperty().addListener(analysisResultListener);
     }
 
     private void errorAlert(String message, Throwable throwable) {
@@ -217,7 +408,7 @@ public class RelicDBController {
     }
 
     private void setChoices(List<DBChoice> dbChoices) {
-        dbVersionChoice.setItems(FXCollections.observableList(dbChoices));
+        dbVersionChoice.getItems().setAll(dbChoices);
     }
 
     private void selectFirstChoice() {
@@ -230,6 +421,83 @@ public class RelicDBController {
 
     private void addChoiceListener() {
         dbVersionChoice.getSelectionModel().selectedItemProperty().addListener(choiceChangeListener);
+    }
+
+    private void disableAnalysisChoices(boolean enableRelicType, boolean enableSubstats) {
+        updateNode(inputRelicType, true, enableRelicType);
+        updateNode(inputRelicPart, true, false);
+        updateNode(inputSetName, true, false);
+        updateNode(inputMainStat, true, false);
+        inputSubstatListenerMap.keySet().forEach(inputSubstat -> updateNode(inputSubstat, true, enableSubstats));
+        updateNode(analysisButton, true, false);
+
+        // deselect
+        inputRelicType.getSelectionModel().clearSelection();
+        inputRelicPart.getSelectionModel().clearSelection();
+        inputSetName.getSelectionModel().clearSelection();
+        inputMainStat.getSelectionModel().clearSelection();
+        inputSubstatListenerMap.keySet().forEach(inputSubstat -> inputSubstat.getSelectionModel().clearSelection());
+    }
+
+    private void testReadyForAnalysis() {
+        boolean ready = inputRelicType.getSelectionModel().getSelectedItem() != null
+                        && inputRelicPart.getSelectionModel().getSelectedItem() != null
+                        && inputSetName.getSelectionModel().getSelectedItem() != null
+                        && inputMainStat.getSelectionModel().getSelectedItem() != null;
+
+        updateNode(analysisButton, true, ready);
+    }
+
+    private void clearSelectionFromSubstat(ChoiceBox<Stat> inputSubStat, Stat mainStat) {
+        if (inputSubStat.getSelectionModel().getSelectedItem() != mainStat)
+            return;
+
+        inputSubStat.getSelectionModel().clearSelection();
+    }
+
+    private void removeSubstatListener(ChoiceBox<Stat> inputSubstat) {
+        ChangeListener<Stat> listener = inputSubstatListenerMap.get(inputSubstat);
+        inputSubstat.getSelectionModel().selectedItemProperty().removeListener(listener);
+    }
+
+    private void readdSubstatListener(ChoiceBox<Stat> inputSubstat) {
+        ChangeListener<Stat> listener = inputSubstatListenerMap.get(inputSubstat);
+        inputSubstat.getSelectionModel().selectedItemProperty().addListener(listener);
+    }
+
+    private ChangeListener<Stat> getSubstatChangeListener(ChoiceBox<Stat> callingInputSubstat) {
+        return (observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                // clear selection from other substats
+                inputSubstatListenerMap.keySet().stream()
+                    .filter(inputSubstat -> inputSubstat != callingInputSubstat)
+                    .forEach(inputSubstat -> clearSelectionFromSubstat(inputSubstat, newValue));
+            }
+
+            // assure that the filter cannot be set to more than the number of set substats
+            long setSubstatCount = inputSubstatListenerMap.keySet().stream()
+                .filter(inputSubstat -> inputSubstat.getSelectionModel().getSelectedItem() != null)
+                .count();
+
+            setFilterSubStatMaxCount((int) setSubstatCount);
+        };
+    }
+
+    private void setFilterSubStatMaxCount(int maxCount) {
+        // from 0 to maxCount, inclusive
+        Integer previousSelection = filterSubStatCount.getSelectionModel().getSelectedItem();
+
+        filterSubStatCount.getItems().setAll(IntStream.rangeClosed(0, maxCount).boxed().toList());
+
+        Integer newSelection = previousSelection != null ? Math.min(previousSelection, maxCount) : 0;
+        filterSubStatCount.getSelectionModel().select(newSelection);
+    }
+
+    private void showAnalysis() {
+        updateNode(analysisPane, true, true);
+
+        // disable all choices except relic type and substats
+        disableAnalysisChoices(true, true);
     }
 
     private void updateNode(Node node, boolean visible, boolean enabled) {

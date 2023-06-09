@@ -8,7 +8,12 @@ import java.util.List;
 public record MainStatScore(MainStatScoreType type, String extraInfo) {
 
     public String getHTML() {
-        String header = HTMLUtil.prependIcon(type.getIcon(), "Main Stat -", type.getDescription());
+        String header = String.format(
+            "%s Main Stat - <b>%s</b>: %s",
+            type.getIcon(),
+            type.getRankTitle(),
+            type.getDescription()
+        );
 
         List<String> details = new ArrayList<>();
 

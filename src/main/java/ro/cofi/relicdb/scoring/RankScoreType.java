@@ -2,24 +2,39 @@ package ro.cofi.relicdb.scoring;
 
 import ro.cofi.relicdb.HTMLUtil;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public enum RankScoreType {
     IDEAL(
-        200, HTMLUtil.EMOJI_TICK,
-        "<b>IDEAL</b>: The best set for this character."
+        4, HTMLUtil.EMOJI_TICK, "IDEAL",
+        "The best set for this character when used as a full set.",
+        "The best set for this character when used with <i>%s</i>."
     ),
     ACCEPTABLE(
-        100, HTMLUtil.EMOJI_DIAMOND,
-        "<b>ACCEPTABLE</b>: There are better sets for this character, but this will do."
+        2, HTMLUtil.EMOJI_PAWN, "ACCEPTABLE",
+        "This set is okay when used as a full set.",
+        "This set is okay when used with <i>%s</i>."
+    ),
+    UNACCEPTABLE(
+        0, HTMLUtil.EMOJI_CROSS, "UNACCEPTABLE",
+        "This set is not good for this character.",
+        null
     );
 
     private final int score;
     private final String icon;
-    private final String description;
+    private final String rankTitle;
+    private final String fullSetDescription;
+    private final String duoSetDescription;
 
-    RankScoreType(int score, String icon, String description) {
+    RankScoreType(int score, String icon, String rankTitle, String fullSetDescription, String duoSetDescription) {
         this.score = score;
         this.icon = icon;
-        this.description = description;
+        this.rankTitle = rankTitle;
+        this.fullSetDescription = fullSetDescription;
+        this.duoSetDescription = duoSetDescription == null ? fullSetDescription : duoSetDescription;
     }
 
     public int getScore() {
@@ -30,8 +45,25 @@ public enum RankScoreType {
         return icon;
     }
 
-    public String getDescription() {
-        return description;
+    public String getRankTitle() {
+        return rankTitle;
     }
 
+    public String getFullSetDescription() {
+        return fullSetDescription;
+    }
+
+    public String getDuoSetDescription() {
+        return duoSetDescription;
+    }
+
+    public Set<RankScoreType> filteredBy(RankScoreType minimumScore) {
+        return Arrays.stream(RankScoreType.values())
+            .filter(type -> type.score >= minimumScore.score)
+            .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public Set<RankScoreType> getHigherScores() {
+        return filteredBy(this);
+    }
 }

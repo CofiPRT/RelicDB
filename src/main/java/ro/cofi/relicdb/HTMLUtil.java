@@ -5,12 +5,10 @@ import java.util.stream.Collectors;
 
 public class HTMLUtil {
     public static final String EMOJI_TICK = "✔";
-    public static final String EMOJI_DIAMOND = "🔸";
-    public static final String EMOJI_CROSS = "❌";
+    public static final String EMOJI_PAWN = "♟";
+    public static final String EMOJI_CROSS = "✖";
 
-    public static String prependIcon(String icon, String... text) {
-        return String.format("%s %s", icon, String.join(" ", text));
-    }
+    private HTMLUtil() { }
 
     public static String wrapInList(List<String> items) {
         return String.format(

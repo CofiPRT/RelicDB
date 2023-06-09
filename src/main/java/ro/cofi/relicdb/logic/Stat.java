@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public enum Stat {
-    SPD("SPD"),
+    SPD("SPD", "Speed"),
     HP("HP"),
     ATK("ATK"),
     HP_PCT("HP%"),
@@ -24,22 +24,22 @@ public enum Stat {
     CRIT_RATE("CRIT Rate"),
     CRIT_DMG("CRIT DMG");
 
-    private static final List<Stat> HEAD = List.of(
+    public static final List<Stat> HEAD = List.of(
         HP
     );
-    private static final List<Stat> HANDS = List.of(
+    public static final List<Stat> HANDS = List.of(
         ATK
     );
-    private static final List<Stat> BODY = List.of(
+    public static final List<Stat> BODY = List.of(
         HP_PCT, ATK_PCT, DEF_PCT, EFFECT_HIT_RATE, OUTGOING_HEALING_BOOST, CRIT_RATE, CRIT_DMG
     );
-    private static final List<Stat> FEET = List.of(
+    public static final List<Stat> FEET = List.of(
         SPD, HP_PCT, ATK_PCT, DEF_PCT
     );
-    private static final List<Stat> PLANAR_SPHERE = List.of(
+    public static final List<Stat> PLANAR_SPHERE = List.of(
         HP_PCT, ATK_PCT, DEF_PCT, PHYSICAL_DMG, FIRE_DMG, ICE_DMG, WIND_DMG, LIGHTNING_DMG, QUANTUM_DMG, IMAGINARY_DMG
     );
-    private static final List<Stat> LINK_ROPE = List.of(
+    public static final List<Stat> LINK_ROPE = List.of(
         HP_PCT, ATK_PCT, DEF_PCT, BREAK_EFFECT, ENERGY_REGEN_RATE
     );
 
@@ -49,12 +49,16 @@ public enum Stat {
         this.names = name;
     }
 
-    public String[] getNames() {
-        return names;
-    }
-
     public boolean matches(String target) {
         return Arrays.stream(names).anyMatch(target::equalsIgnoreCase);
     }
 
+    @Override
+    public String toString() {
+        return names[0];
+    }
+
+    public static Stat[] valuesWithNull() {
+        return Arrays.copyOf(values(), values().length + 1);
+    }
 }

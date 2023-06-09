@@ -1,9 +1,11 @@
 package ro.cofi.relicdb;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ro.cofi.relicdb.io.DBChoice;
 import ro.cofi.relicdb.logic.Stat;
+import ro.cofi.relicdb.scoring.AnalysisFilters;
 import ro.cofi.relicdb.scoring.AnalysisRecipe;
 import ro.cofi.relicdb.scoring.MainStatScore;
 import ro.cofi.relicdb.scoring.MainStatScoreType;
@@ -17,6 +19,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class LoadedDB {
 
@@ -28,39 +33,56 @@ public class LoadedDB {
         this.dbChoice = dbChoice;
     }
 
-    public JsonObject getData() {
-        return data;
-    }
-
     public DBChoice getDBChoice() {
         return dbChoice;
     }
 
-    public String analyzeItem(AnalysisRecipe recipe) {
-        List<Score> scores = getScores(recipe);
+    public List<String> getWeaponNames(String jsonKey) {
+        return data.getAsJsonArray(jsonKey).asList().stream().map(JsonElement::getAsString).toList();
+    }
+
+    public String analyzeItem(AnalysisRecipe recipe, AnalysisFilters filters) {
+        List<Score> scores = getScores(recipe, filters);
+
+        if (scores.isEmpty())
+            return "No results found. Try applying less restrictive filters.";
 
         // sort scores by score, then by character name
         scores.sort(Comparator.comparing(Score::getTotalScore).reversed().thenComparing(Score::getCharacter));
 
-        return HTMLUtil.wrapInList(scores.stream().map(Score::getDescription).toList());
+        return HTMLUtil.wrapInLineBreaks(scores.stream().map(Score::getDescription).toList());
     }
 
-    private List<Score> getScores(AnalysisRecipe recipe) {
+    private List<Score> getScores(AnalysisRecipe recipe, AnalysisFilters filters) {
         List<Score> scores = new ArrayList<>();
 
         JsonArray characters = data.getAsJsonArray("characters");
-        List<Stat> ownedSubStats = List.of(
+        List<Stat> ownedSubStats = Stream.of(
             recipe.subStat1(),
             recipe.subStat2(),
             recipe.subStat3(),
             recipe.subStat4()
-        );
+        ).filter(Objects::nonNull).toList();
 
         for (int i = 0; i < characters.size(); i++) {
             JsonObject character = characters.get(i).getAsJsonObject();
-            String characterName = character.get("name").getAsString();
 
+            MainStatScore mainStatScore = getMainStatScore(recipe, character);
+            if (mainStatScore != null && !filters.acceptMainStatScores().contains(mainStatScore.type()))
+                continue;
+
+            List<SubStatScore> subStatScores = getSubStatScores(ownedSubStats, character);
+            int metSubStats = (int) subStatScores.stream()
+                .filter(subStatScore -> subStatScore.type() == SubStatScoreType.MET)
+                .count();
+            if (metSubStats < filters.subStatScoreFilter())
+                continue;
+
+            String characterName = character.get("name").getAsString();
+            String characterURL = character.get("url").getAsString();
             JsonArray weaponOptions = character.getAsJsonArray(recipe.type().getJsonKey());
+
+            boolean found = false;
 
             for (int j = 0; j < weaponOptions.size(); j++) {
                 JsonObject weaponOption = weaponOptions.get(j).getAsJsonObject();
@@ -81,18 +103,33 @@ public class LoadedDB {
                 if (foundIndex == weaponSetCount)
                     continue;
 
+                found = true;
+
                 // we found a matching set, construct a score
                 RankScore rankScore = getRankScore(weaponOption, weaponSets, weaponSetCount, foundIndex);
-                MainStatScore mainStatScore = getMainStatScore(recipe, character);
-                List<SubStatScore> subStatScores = getSubStatScores(ownedSubStats, character);
+                if (!filters.acceptedRankScores().contains(rankScore.type()))
+                    continue;
 
                 Score score = new Score(
-                    characterName, character.get("url").getAsString(),
+                    characterName, characterURL,
                     rankScore, mainStatScore, subStatScores
                 );
 
                 scores.add(score);
             }
+
+            if (found || !filters.acceptedRankScores().contains(RankScoreType.UNACCEPTABLE))
+                continue;
+
+            // create a bad rank score
+            RankScore rankScore = new RankScore(RankScoreType.UNACCEPTABLE, null);
+
+            Score score = new Score(
+                characterName, characterURL,
+                rankScore, mainStatScore, subStatScores
+            );
+
+            scores.add(score);
         }
 
         return scores;
@@ -107,8 +144,7 @@ public class LoadedDB {
             ? null
             : weaponSets.get(1 - foundIndex).getAsJsonObject().get("name").getAsString();
 
-        RankScore rankScore = new RankScore(rankScoreType, otherSet);
-        return rankScore;
+        return new RankScore(rankScoreType, otherSet);
     }
 
     private MainStatScore getMainStatScore(AnalysisRecipe recipe, JsonObject character) {
@@ -134,10 +170,14 @@ public class LoadedDB {
                 : MainStatScoreType.IDEAL;
 
             String otherMainStat = null;
-            if (mainStatScoreType == MainStatScoreType.UNACCEPTABLE)
+            if (mainStatScoreType == MainStatScoreType.UNACCEPTABLE) {
                 otherMainStat = mainStatOptionsRaw;
-            else if (mainStatCount > 1)
-                otherMainStat = mainStatOptions[1 - foundIndex];
+            } else if (mainStatCount > 1) {
+                // concatenate all options except the one we found
+                otherMainStat = Arrays.stream(mainStatOptions)
+                    .filter(mainStatOption -> !mainStatOption.equals(recipe.mainStat().toString()))
+                    .collect(Collectors.joining(" / "));
+            }
 
             mainStatScore = new MainStatScore(mainStatScoreType, otherMainStat);
         }

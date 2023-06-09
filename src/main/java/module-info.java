@@ -9,6 +9,8 @@ module ro.cofi.relicdb {
     requires org.jsoup;
     requires com.google.gson;
     requires org.apache.commons.io;
+    requires jdk.xml.dom;
+    requires java.desktop;
 
     opens ro.cofi.relicdb to javafx.fxml;
     exports ro.cofi.relicdb;
